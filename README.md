@@ -2,6 +2,7 @@
 
 Buildkite Plugin for Setting AWS Defaults and Setting Git credentials on startup using Secrets Manager
 
+This is still WIP Repo
 
 
 ## Usage
@@ -10,7 +11,7 @@ Buildkite Plugin for Setting AWS Defaults and Setting Git credentials on startup
 steps:
   # Run the included simple-command script that echos
     plugins:
-      - alfacode/aws-environment#v1.0.0: ~
+      - alfacode/aws-environment#v0.1.0: ~
 
 ```
 
