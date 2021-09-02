@@ -10,7 +10,7 @@ Buildkite Plugin for Setting AWS Defaults and Setting Git credentials on startup
 steps:
   # Run the included simple-command script that echos
     plugins:
-      - aws-environment#v1.0.0: ~
+      - alfacode/aws-environment#v1.0.0: ~
 
 ```
 
@@ -24,3 +24,19 @@ MIT (see [LICENSE](LICENSE))
 - Finish SSM portion
 - Documentation
 - Tests
+
+## Developing
+
+To run the tests:
+
+```shell
+docker-compose run --rm tests
+```
+
+## Contributing
+
+1. Fork the repo
+2. Make the changes
+3. Run the tests
+4. Commit and push your changes
+5. Send a pull request

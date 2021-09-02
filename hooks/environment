@@ -11,10 +11,15 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 main() {
 
     export PATH="$PATH:$HOOKS_DIR/../bin"
-    export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
-    export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
 
-    echo "Exported AWS_ACCOUNT_ID:${AWS_ACCOUNT_ID}\nAWS_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
+     if [[ -n $AWS_ACCOUNT_ID && -n $AWS_ACCOUNT_ID ]]; then
+        echo "Exported AWS_ACCOUNT_ID:${AWS_ACCOUNT_ID}\nAWS_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
+        export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
+        export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+     else
+        echo "Error in setting AWS_ACCOUNT_ID"
+     fi
+    
 }
 
 main
