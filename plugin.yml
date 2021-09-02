@@ -1,0 +1,10 @@
+name: AWS Environment Plugin
+description: Sets Defaults for AWS, allows git check from Secrets Manager
+author: https://github.com/harshadbhatia/aws-environment-buildkite-plugin
+public: true
+requirements:
+  - aws
+  - bash
+configuration:
+  properties: {}
+  additionalProperties: false
