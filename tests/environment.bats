@@ -30,7 +30,12 @@ main() {
     run main
     # Global vars are populated output and lines
     [ $status -eq 0 ]
-    [ "$output" == "Exported AWS_ACCOUNT_ID:123456789\nAWS_DEFAULT_REGION:ap-southeast-2" ]
+
+    # Match Correct echo
+    assert_line "Exported AWS_ACCOUNT_ID:123456789"
+    assert_line "AWS_DEFAULT_REGION:ap-southeast-2"
+    assert_line "CDK_DEFAULT_ACCOUNT:123456789"
+    assert_line "CDK_DEFAULT_REGION:ap-southeast-2"
 
     assert_success
 }

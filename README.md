@@ -11,7 +11,7 @@ This is still WIP Repo
 steps:
   # Run the included simple-command script that echos
     plugins:
-      - harshadbhatia/aws-environment#v0.1.1: ~
+      - harshadbhatia/aws-environment#v0.1.2: ~
 
 ```
 
