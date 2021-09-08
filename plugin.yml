@@ -6,5 +6,9 @@ requirements:
   - aws
   - bash
 configuration:
-  properties: {}
+  properties:
+    secrets_prefix:
+      type: string
+    debug:
+      type: boolean
   additionalProperties: false

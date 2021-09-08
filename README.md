@@ -11,10 +11,9 @@ This is still WIP Repo
 steps:
   # Run the included simple-command script that echos
     plugins:
-      - harshadbhatia/aws-environment#v0.1.2: ~
-          - debug=true
-          - secrets_prefix=
-
+      - harshadbhatia/aws-environment#v0.1.2:
+          debug (optional- default false): true
+          secrets_prefix (optional- default "buildkite/{queue_name}/"): mysecretprefix
 ```
 
 
