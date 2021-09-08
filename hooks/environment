@@ -90,11 +90,12 @@ load_git_creds_from_sm() {
       echo "+++ :warning: Failed to find any ssh key secrets" >&2;
       exit 1
     fi
-  fi
-
   # Otherwise check for git credentials for https, use the first one we find
-  if [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
+  elif [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
     echo "Authentication through Git Personal Access Token not implemented yet." >&2;
+    exit 1
+  else
+    echo "Repo ${BUILDKITE_REPO:-} not recognised." >&2;
     exit 1
   fi
 }
