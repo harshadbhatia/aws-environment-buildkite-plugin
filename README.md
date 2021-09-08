@@ -12,7 +12,38 @@ steps:
   # Run the included simple-command script that echos
     plugins:
       - harshadbhatia/aws-environment#v0.1.2: ~
+          - debug=true
+          - secrets_prefix=
 
+```
+
+
+## Usage
+
+Your builds will check the following Secrets Manager names by default unless specified with `secrets_prefix`:
+### Default
+* `buildkite/{queue_name}/ssh-private-key`
+
+### With `secrets_prefix`
+* `{secrets_prefix}ssh-private-key`
+
+Both of these secrets use the `SecretString` type and refer to git authentication.
+
+## Uploading Secrets
+
+### Setting SSH Keys for Git Checkouts
+
+This example uploads an ssh key for a git+ssh checkout for a pipeline:
+
+```bash
+# generate a deploy key for your project
+ssh-keygen -t rsa -b 4096 -f id_rsa_buildkite
+pbcopy < id_rsa_buildkite.pub # paste this into your github deploy key
+
+# create a managed secret with the private key
+aws secretsmanager create-secret \
+  --name "buildkite/{queue_name}/ssh-private-key" \
+  --secret-string "$(cat file://id_rsa_buildkite)"
 ```
 
 ## License

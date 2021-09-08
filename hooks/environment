@@ -22,18 +22,16 @@ main() {
         echo "AWS_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
         echo "CDK_DEFAULT_ACCOUNT:${AWS_ACCOUNT_ID}"
         echo "CDK_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
+        load_git_creds_from_sm
      else
         echo "Error in setting AWS_ACCOUNT_ID"
      fi
-
-    load_keys_from_sm
 }
 
-load_keys_from_sm() {
+load_git_creds_from_sm() {
   # Adapted from https://github.com/buildkite/elastic-ci-stack-secrets-manager-hooks/blob/master/hooks/pre-command
   # shellcheck disable=SC1090
-  lib_dir="$HOOKS_DIR/../lib"
-  . "lib_dir/shared.bash"
+  . "${HOOKS_DIR}/../lib/shared"
 
   debug() {
     if [[ "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_DEBUG:-false}" =~ (true|on|1) ]] ; then
@@ -41,14 +39,14 @@ load_keys_from_sm() {
     fi
   }
 
+  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX is not set, default to buildkite/<buildkite-queue>/
   if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX:-}" ]] ; then
     export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX="buildkite/${BUILDKITE_QUEUE}/"
-    echo "Secrets Prefix set as default value of ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX}"
+    debug "Secrets Prefix set as default value of buildkite/{buildkite-queue}/: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX}"
   fi
 
   echo "~~~ Loading secrets from AWS Secrets Manager" >&2;
   debug "Searching in prefix ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX} in region ${AWS_DEFAULT_REGION}"
-
 
   # Read all the secret keys into an array
   secrets=()
@@ -96,28 +94,9 @@ load_keys_from_sm() {
 
   # Otherwise check for git credentials for https, use the first one we find
   if [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
-    git_credentials_paths=(
-      "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX}git-credentials"
-    )
-
-    git_credentials=()
-
-    for key in ${git_credentials_paths[*]} ; do
-      debug "Checking ${key}" >&2
-
-      if in_array "$key" "${secrets[@]}" ; then
-        echo "Adding git-credentials in $key as a credential helper" >&2;
-        git_credentials+=("'credential.helper=$lib_dir/git-credential-sm-secrets ${key}'")
-      fi
-    done
-
-    if [[ "${#git_credentials[@]}" -gt 0 ]] ; then
-      export GIT_CONFIG_PARAMETERS
-      debug "Setting GIT_CONFIG_PARAMETERS"
-      GIT_CONFIG_PARAMETERS=$( IFS=' '; echo -n "${git_credentials[*]}" )
-    fi
+    echo "Authentication through Git Personal Access Token not implemented yet." >&2;
+    exit 1
   fi
-
 }
 
 main
