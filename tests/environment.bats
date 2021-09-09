@@ -3,7 +3,6 @@
 
 
 setup() {
-
     load "$BATS_PATH/load.bash"
     #export AWS_STUB_DEBUG=/dev/tty
     #export SSH_ADD_STUB_DEBUG=/dev/tty
@@ -17,16 +16,6 @@ setup() {
     export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
     stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
     stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
-    cat << EOF > $TMP_DIR/ssh-secrets-default
-{
-    "SecretList": [
-        {
-            "ARN": "arn:aws:secretsmanager:ap-southeast-2:xxxxx:secret:buildkite/my-queue/my-pipeline/ssh-private-key-xxxx",
-            "Name": "buildkite/my-queue/ssh-private-key"
-        }
-    ]
-}
-EOF
 }
 
 teardown() {
@@ -44,7 +33,6 @@ main() {
 @test "Environment Variables are set correctly" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : cat $TMP_DIR/ssh-secrets-default" \
     "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-repo"
 
     # Run main method
@@ -79,7 +67,6 @@ main() {
 @test "Secret Manager Default Secret Key Prefix SSH Key Loaded correctly" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : cat $TMP_DIR/ssh-secrets-default" \
     "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
 
     # Run main method
@@ -87,74 +74,46 @@ main() {
 
     [ $status -eq 0 ]
     assert_success
-    assert_line "Found ssh-key at buildkite/my-queue/ssh-private-key"
     assert_output --partial "ssh-agent (pid 93799)"
     assert_output --partial "added ssh key"
-    assert_equal "$(head $TMP_DIR/ssh-add-input)" "test-key"
+    assert_equal "$(cat $TMP_DIR/ssh-add-input)" "test-key"
 }
 
 
 @test "Secret Manager Custom Secret Key Prefix SSH Key Loaded correctly" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : cat $TMP_DIR/ssh-secrets-custom" \
     "secretsmanager get-secret-value --secret-id my-custom-prefix/ssh-private-key --query SecretString --output text : echo test-key"
 
-    # Override default secret key prefix
-    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX=my-custom-prefix/
-    cat << EOF > $TMP_DIR/ssh-secrets-custom
-{
-    "SecretList": [
-        {
-            "ARN": "arn:aws:secretsmanager:ap-southeast-2:xxxxx:secret:buildkite/my-queue/my-pipeline/ssh-private-key-xxxx",
-            "Name": "my-custom-prefix/ssh-private-key"
-        }
-    ]
-}
-EOF
+    # Override default secret key name
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=my-custom-prefix/ssh-private-key
+
+    # Set to Debug Mode
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_DEBUG=true
 
     # Run main method
     run main
 
     [ $status -eq 0 ]
     assert_success
-    assert_line "Found ssh-key at my-custom-prefix/ssh-private-key"
+    assert_line "Retrieving secret my-custom-prefix/ssh-private-key in region ap-southeast-2"
     assert_output --partial "ssh-agent (pid 93799)"
     assert_output --partial "added ssh key"
     assert_equal "$(cat $TMP_DIR/ssh-add-input)" "test-key"
 }
 
-@test "Secret Manager No Secrets in SM" {
+
+@test "No ssh key found in SM" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : echo None" \
+    "secretsmanager get-secret-value --secret-id non-existent-secret --query SecretString --output text : echo \"An error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: Secrets Manager can't find the specified secret.\"; exit 1"
+
+    # Override default secret key name
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=non-existent-secret
 
     # Run main method
     run main
-
-    assert_line "No secrets found"
-    [ $status -eq 0 ]
-}
-
-@test "Secret Manager No relevant secret keys found in SM" {
-    stub aws \
-    "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : cat $TMP_DIR/ssh-secrets-no-relevant-secret" \
-
-    cat << EOF > $TMP_DIR/ssh-secrets-no-relevant-secret
-{
-    "SecretList": [
-        {
-            "ARN": "arn:aws:secretsmanager:ap-southeast-2:xxxxx:secret:buildkite/my-queue/my-pipeline/ssh-private-key-xxxx",
-            "Name": "randomsecret"
-        }
-    ]
-}
-EOF
-
-    # Run main method
-    run main
-    assert_output --partial "Failed to find any ssh key secrets"
+    assert_line "+++ :warning: Failed to get secret non-existent-secret"
     assert_failure
     [ $status -eq 1 ]
 }

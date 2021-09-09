@@ -7,7 +7,7 @@ requirements:
   - bash
 configuration:
   properties:
-    secrets_prefix:
+    secret_name:
       type: string
     debug:
       type: boolean

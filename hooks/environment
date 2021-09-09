@@ -39,63 +39,28 @@ load_git_creds_from_sm() {
     fi
   }
 
-  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX is not set, default to buildkite/<buildkite-queue>/
-  if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX:-}" ]] ; then
-    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX="buildkite/${BUILDKITE_QUEUE}/"
-    debug "Secrets Prefix set as default value of buildkite/{buildkite-queue}/: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX}"
+  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME is not set, default to buildkite/<buildkite-queue>/
+  if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME:-}" ]] ; then
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME="buildkite/${BUILDKITE_QUEUE}/ssh-private-key"
+    debug "Secret Name set as default value of buildkite/{buildkite-queue}/ssh-private-key: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}"
   fi
 
   echo "~~~ Loading secrets from AWS Secrets Manager" >&2;
-  debug "Searching in prefix ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX} in region ${AWS_DEFAULT_REGION}"
-
-  # Read all the secret keys into an array
-  secrets=()
-  while read -r name _ ; do
-    secrets+=("$name")
-  done < <(sm_secret_names)
-
-  # Finish quickly if no secrets are found
-  if [ ${#secrets[@]} -eq 0 ] ; then
-    echo "No secrets found"
-    exit 0
-  fi
+  debug "Retrieving secret ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME} in region ${AWS_DEFAULT_REGION}"
 
   # First up we look for ssh keys if the repository is ssh
   if [[ "${BUILDKITE_REPO:-}" =~ ^git ]] ; then
-    ssh_key_paths=(
-      "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRETS_PREFIX}ssh-private-key"
-    )
-
-    # Look in our key paths in order, but we'll load them all
-    for key in ${ssh_key_paths[*]} ; do
-      debug "Checking ${key}" >&2
-
-      # Check if that secret key exists
-      if in_array "$key" "${secrets[@]}" ; then
-        echo "Found ssh-key at ${key}" >&2;
-
-        if ! ssh_key=$(sm_secret_get "$key") ; then
-          echo "+++ :warning: Failed to get secret $key" >&2;
-          exit 1
-        fi
-
-        # Add the ssh key to an ephemeral ssh agent so the key never touches disk
-        debug "Got ${#ssh_key} bytes of ssh key"
-        add_ssh_private_key_to_agent "$ssh_key"
-        key_found=1
-      fi
-    done
-
-    if [[ -z "${key_found:-}" ]] ; then
-      echo "+++ :warning: Failed to find any ssh key secrets" >&2;
+    if ! ssh_key=$(sm_secret_get "$BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME") ; then
+      echo "+++ :warning: Failed to get secret ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}" >&2;
       exit 1
     fi
+    # Add the ssh key to an ephemeral ssh agent so the key never touches disk
+    debug "Got ${#ssh_key} bytes of ssh key"
+    add_ssh_private_key_to_agent "$ssh_key"
+
   # Otherwise check for git credentials for https, use the first one we find
   elif [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
     echo "Authentication through Git Personal Access Token not implemented yet." >&2;
-    exit 1
-  else
-    echo "Repo ${BUILDKITE_REPO:-} not recognised." >&2;
     exit 1
   fi
 }

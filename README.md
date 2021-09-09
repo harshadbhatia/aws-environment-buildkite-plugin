@@ -13,18 +13,18 @@ steps:
     plugins:
       - harshadbhatia/aws-environment#v0.1.2:
           debug (optional- default false): true
-          secrets_prefix (optional- default "buildkite/{queue_name}/"): mysecretprefix
+          secret_name (optional- default "buildkite/{queue_name}/"): mysecretname
 ```
 
 
 ## Usage
 
-Your builds will check the following Secrets Manager names by default unless specified with `secrets_prefix`:
+Your builds will check the following Secrets Manager names by default unless specified with `secret_name`:
 ### Default
 * `buildkite/{queue_name}/ssh-private-key`
 
-### With `secrets_prefix`
-* `{secrets_prefix}ssh-private-key`
+### With `secret_name`
+* `{secret_name}`
 
 Both of these secrets use the `SecretString` type and refer to git authentication.
 
