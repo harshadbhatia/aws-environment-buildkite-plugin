@@ -1,20 +1,32 @@
 #!/usr/bin/env bats
 
-
-
 setup() {
+    sm_stubs() {
+        # Secret Manager Default Env var params
+        export BUILDKITE_QUEUE=my-queue
+        export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
+
+        # Test Resources & Directories
+        export TEST_RESOURCES_DIR="$PWD/tests/resources"
+        export TMP_DIR=/tmp/run.bats/$$
+        mkdir -p $TMP_DIR
+
+        # Default stub values
+        stub aws \
+        "sts get-caller-identity --query Account --output text : echo '123456789'" \
+        "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
+        stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
+        stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
+    }
+
     load "$BATS_PATH/load.bash"
+
     #export AWS_STUB_DEBUG=/dev/tty
     #export SSH_ADD_STUB_DEBUG=/dev/tty
     #export SSH_AGENT_STUB_DEBUG=/dev/tty
     #export GIT_STUB_DEBUG=/dev/tty
 
-    # Secret Manager Default Stub values
-    export TEST_RESOURCES_DIR="$PWD/tests/resources"
-    export TMP_DIR=/tmp/run.bats/$$
-    mkdir -p $TMP_DIR
-    export BUILDKITE_QUEUE=my-queue
-    export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
+    sm_stubs
 }
 
 teardown() {
@@ -25,17 +37,14 @@ teardown() {
 }
 
 main() {
-    bash "$PWD/hooks/environment"
+    . "$PWD/hooks/environment"
+
+    # Pre-exit hook is used to kill the SSH agent if running, BATs test will not terminate if the SSH agent is running.
+    . "$PWD/hooks/pre-exit"
 }
 
 
 @test "Environment Variables are set correctly" {
-    stub aws \
-    "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
-    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
-    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
-
     # Run main method
     run main
     # Global vars are populated output and lines
@@ -51,7 +60,6 @@ main() {
 
 
 @test "Error if AWS_ACCOUNT_ID is empty" {
-
     stub aws \
     "sts get-caller-identity --query Account --output text : echo ''"
     # Run main method
@@ -65,14 +73,7 @@ main() {
 }
 
 
-@test "Secret Manager Default Secret Key Prefix SSH Key Loaded correctly" {
-    stub aws \
-    "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
-    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
-    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
-
-
+@test "Default Secret Name from SM loaded correctly" {
     # Run main method
     run main
 
@@ -84,16 +85,14 @@ main() {
 }
 
 
-@test "Secret Manager Custom Secret Key Prefix SSH Key Loaded correctly" {
+@test "Custom Secret Name from SM loaded correctly" {
+    custom_secret_name=my-custom-prefix/ssh-private-key
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id my-custom-prefix/ssh-private-key --query SecretString --output text : echo test-key"
-    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
-    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
-
+    "secretsmanager get-secret-value --secret-id ${custom_secret_name} --query SecretString --output text : echo test-key"
 
     # Override default secret key name
-    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=my-custom-prefix/ssh-private-key
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=$custom_secret_name
 
     # Set to Debug Mode
     export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_DEBUG=true
@@ -103,51 +102,55 @@ main() {
 
     [ $status -eq 0 ]
     assert_success
-    assert_line "Retrieving secret my-custom-prefix/ssh-private-key in region ap-southeast-2"
+    assert_line "Retrieving secret ${custom_secret_name} in region ap-southeast-2"
     assert_output --partial "ssh-agent (pid 93799)"
     assert_output --partial "added ssh key"
     assert_equal "$(cat $TMP_DIR/ssh-add-input)" "test-key"
 }
 
-@test "Secret Manager Test SSH Key Loaded correctly" {
+
+@test "Sample SSH Key Loaded correctly" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
     "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : \
-    cat $TEST_RESOURCES_DIR/test.key"
-    # stub ssh-add "- : /usr/bin/ssh-add -"
-    # stub ssh-agent \ "-s : /usr/bin/ssh-agent -s"
+    cat $TEST_RESOURCES_DIR/sample.key"
 
+    # Call actual command which is in the /usr/bin path
+    stub ssh-add "- : /usr/bin/ssh-add -"
+    stub ssh-agent \
+    "-s : /usr/bin/ssh-agent -s" \
+    "-k : /usr/bin/ssh-agent -k"
 
     # Run main method
     run main
 
     [ $status -eq 0 ]
     assert_success
-    assert_output --partial "Loading ssh-key into ssh-agent (pid"
-    assert_line 'Identity added: (stdin) (your_email@example.com)'
+    assert_output --partial "Loading ssh-key into ssh-agent (pid "
+    assert_line "Identity added: (stdin) (your_email@example.com)"
+    assert_output --partial "~~~ Stopping ssh-agent "
 }
 
-@test "No ssh key found in SM" {
+@test "Cant Find Specified Secret Name in SM" {
+    custom_secret_name=non-existent-secret
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id non-existent-secret --query SecretString --output text : \
+    "secretsmanager get-secret-value --secret-id ${custom_secret_name} --query SecretString --output text : \
     echo \"An error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: \
     Secrets Manager can't find the specified secret.\"; exit 1"
 
     # Override default secret key name
-    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=non-existent-secret
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=$custom_secret_name
 
     # Run main method
     run main
-    assert_line "+++ :warning: Failed to get secret non-existent-secret"
+    assert_line "+++ :warning: Failed to get secret ${custom_secret_name}"
     assert_failure
     [ $status -eq 1 ]
 }
 
-@test "Secret Manager GIT PAS not implemented yet" {
-    stub aws \
-    "sts get-caller-identity --query Account --output text : echo '123456789'"
-
+@test "Git PAS Authentication not implemented yet" {
+    # Override Repo
     export BUILDKITE_REPO=https://github.com/buildkite/test-repo.git
 
     # Run main method

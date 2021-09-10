@@ -60,6 +60,12 @@ MIT (see [LICENSE](LICENSE))
 
 To run the tests:
 
+First build the image:
+```shell
+docker-compose build
+```
+
+Then run the test:
 ```shell
 docker-compose run --rm tests
 ```
