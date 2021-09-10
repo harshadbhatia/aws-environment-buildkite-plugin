@@ -1,7 +1,16 @@
 #!/usr/bin/env bats
 
+default_stubs() {
+    # Default stub values
+    stub aws \
+    "sts get-caller-identity --query Account --output text : echo '123456789'" \
+    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
+    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
+    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
+}
+
 setup() {
-    sm_stubs() {
+    sm_set_up() {
         # Secret Manager Default Env var params
         export BUILDKITE_QUEUE=my-queue
         export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
@@ -10,13 +19,6 @@ setup() {
         export TEST_RESOURCES_DIR="$PWD/tests/resources"
         export TMP_DIR=/tmp/run.bats/$$
         mkdir -p $TMP_DIR
-
-        # Default stub values
-        stub aws \
-        "sts get-caller-identity --query Account --output text : echo '123456789'" \
-        "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
-        stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
-        stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
     }
 
     load "$BATS_PATH/load.bash"
@@ -26,7 +28,7 @@ setup() {
     #export SSH_AGENT_STUB_DEBUG=/dev/tty
     #export GIT_STUB_DEBUG=/dev/tty
 
-    sm_stubs
+    sm_set_up
 }
 
 teardown() {
@@ -45,6 +47,8 @@ main() {
 
 
 @test "Environment Variables are set correctly" {
+    default_stubs
+
     # Run main method
     run main
     # Global vars are populated output and lines
@@ -74,6 +78,8 @@ main() {
 
 
 @test "Default Secret Name from SM loaded correctly" {
+    default_stubs
+
     # Run main method
     run main
 
@@ -87,6 +93,9 @@ main() {
 
 @test "Custom Secret Name from SM loaded correctly" {
     custom_secret_name=my-custom-prefix/ssh-private-key
+    default_stubs
+
+    # Override AWS default stub
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
     "secretsmanager get-secret-value --secret-id ${custom_secret_name} --query SecretString --output text : echo test-key"
@@ -114,12 +123,6 @@ main() {
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
     "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : \
     cat $TEST_RESOURCES_DIR/sample.key"
-
-    # Call actual command which is in the /usr/bin path
-    stub ssh-add "- : /usr/bin/ssh-add -"
-    stub ssh-agent \
-    "-s : /usr/bin/ssh-agent -s" \
-    "-k : /usr/bin/ssh-agent -k"
 
     # Run main method
     run main
@@ -150,6 +153,8 @@ main() {
 }
 
 @test "Git PAS Authentication not implemented yet" {
+    default_stubs
+
     # Override Repo
     export BUILDKITE_REPO=https://github.com/buildkite/test-repo.git
 
