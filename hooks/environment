@@ -41,11 +41,11 @@ load_git_creds_from_sm() {
 
   # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME is not set, default to buildkite/<buildkite-queue>/
   if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME:-}" ]] ; then
-    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME="buildkite/${BUILDKITE_QUEUE}/ssh-private-key"
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME="buildkite/${BUILDKITE_AGENT_META_DATA_QUEUE}/ssh-private-key"
     debug "Secret Name set as default value of buildkite/{buildkite-queue}/ssh-private-key: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}"
   fi
 
-  echo "~~~ Loading secrets from AWS Secrets Manager" >&2;
+  echo "~~~ Loading secrets from AWS Secrets Manager";
   debug "Retrieving secret ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME} in region ${AWS_DEFAULT_REGION}"
 
   # First up we look for ssh keys if the repository is ssh

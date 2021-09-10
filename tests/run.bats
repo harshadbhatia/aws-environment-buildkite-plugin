@@ -12,7 +12,7 @@ default_stubs() {
 setup() {
     sm_set_up() {
         # Secret Manager Default Env var params
-        export BUILDKITE_QUEUE=my-queue
+        export BUILDKITE_AGENT_META_DATA_QUEUE=my-queue
         export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
 
         # Test Resources & Directories
