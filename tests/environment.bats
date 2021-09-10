@@ -10,12 +10,11 @@ setup() {
     #export GIT_STUB_DEBUG=/dev/tty
 
     # Secret Manager Default Stub values
+    export TEST_RESOURCES_DIR="$PWD/tests/resources"
     export TMP_DIR=/tmp/run.bats/$$
     mkdir -p $TMP_DIR
     export BUILDKITE_QUEUE=my-queue
     export BUILDKITE_REPO=git@github.com:buildkite/test-repo.git
-    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
-    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
 }
 
 teardown() {
@@ -33,7 +32,9 @@ main() {
 @test "Environment Variables are set correctly" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-repo"
+    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
+    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
+    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
 
     # Run main method
     run main
@@ -68,6 +69,9 @@ main() {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
     "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : echo test-key"
+    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
+    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
+
 
     # Run main method
     run main
@@ -84,6 +88,9 @@ main() {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
     "secretsmanager get-secret-value --secret-id my-custom-prefix/ssh-private-key --query SecretString --output text : echo test-key"
+    stub ssh-add "- : cat > $TMP_DIR/ssh-add-input ; echo added ssh key"
+    stub ssh-agent "-s : echo export SSH_AGENT_PID=93799"
+
 
     # Override default secret key name
     export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=my-custom-prefix/ssh-private-key
@@ -102,11 +109,30 @@ main() {
     assert_equal "$(cat $TMP_DIR/ssh-add-input)" "test-key"
 }
 
+@test "Secret Manager Test SSH Key Loaded correctly" {
+    stub aws \
+    "sts get-caller-identity --query Account --output text : echo '123456789'" \
+    "secretsmanager get-secret-value --secret-id buildkite/my-queue/ssh-private-key --query SecretString --output text : \
+    cat $TEST_RESOURCES_DIR/test.key"
+    # stub ssh-add "- : /usr/bin/ssh-add -"
+    # stub ssh-agent \ "-s : /usr/bin/ssh-agent -s"
+
+
+    # Run main method
+    run main
+
+    [ $status -eq 0 ]
+    assert_success
+    assert_output --partial "Loading ssh-key into ssh-agent (pid"
+    assert_line 'Identity added: (stdin) (your_email@example.com)'
+}
 
 @test "No ssh key found in SM" {
     stub aws \
     "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager get-secret-value --secret-id non-existent-secret --query SecretString --output text : echo \"An error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: Secrets Manager can't find the specified secret.\"; exit 1"
+    "secretsmanager get-secret-value --secret-id non-existent-secret --query SecretString --output text : \
+    echo \"An error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: \
+    Secrets Manager can't find the specified secret.\"; exit 1"
 
     # Override default secret key name
     export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME=non-existent-secret
@@ -120,8 +146,7 @@ main() {
 
 @test "Secret Manager GIT PAS not implemented yet" {
     stub aws \
-    "sts get-caller-identity --query Account --output text : echo '123456789'" \
-    "secretsmanager list-secrets : cat $TMP_DIR/ssh-secrets-default"
+    "sts get-caller-identity --query Account --output text : echo '123456789'"
 
     export BUILDKITE_REPO=https://github.com/buildkite/test-repo.git
 
