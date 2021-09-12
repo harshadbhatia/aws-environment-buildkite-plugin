@@ -160,7 +160,7 @@ main() {
 
     # Run main method
     run main
-    assert_line "Authentication through Git Personal Access Token not implemented yet."
+    assert_line "+++ :warning: Authentication through Git Personal Access Token not implemented yet."
     assert_failure
     [ $status -eq 1 ]
 }

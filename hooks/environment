@@ -39,7 +39,7 @@ load_git_creds_from_sm() {
     fi
   }
 
-  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME is not set, default to buildkite/<buildkite-queue>/
+  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME is not set, default to buildkite/<buildkite-queue>/ssh-private-key
   if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME:-}" ]] ; then
     export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME="buildkite/${BUILDKITE_AGENT_META_DATA_QUEUE}/ssh-private-key"
     debug "Secret Name set as default value of buildkite/{buildkite-queue}/ssh-private-key: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}"
@@ -60,7 +60,7 @@ load_git_creds_from_sm() {
 
   # Otherwise check for git credentials for https, use the first one we find
   elif [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
-    echo "Authentication through Git Personal Access Token not implemented yet." >&2;
+    echo "+++ :warning: Authentication through Git Personal Access Token not implemented yet." >&2;
     exit 1
   fi
 }
