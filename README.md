@@ -13,7 +13,7 @@ steps:
     plugins:
       - harshadbhatia/aws-environment#v0.1.2:
           debug (optional- default false): true
-          secret_name (optional- default "buildkite/{queue_name}/"): mysecretname
+          secret_name (optional- default "buildkite/{queue_name}/ssh-private-key"): mysecretname
 ```
 
 
