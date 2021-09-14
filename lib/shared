@@ -1,0 +1,27 @@
+#!/bin/bash
+# Adapted from https://github.com/buildkite/elastic-ci-stack-secrets-manager-hooks/blob/master/lib/shared.bash
+sm() {
+  aws secretsmanager "$@"
+}
+
+sm_secret_get() {
+  local secret_id="$1"
+  local query="${2:-SecretString}"
+
+  sm get-secret-value \
+    --secret-id "${secret_id}" \
+    --query "${query}" \
+    --output text
+}
+
+add_ssh_private_key_to_agent() {
+  local ssh_key="$1"
+
+  if [[ -z "${SSH_AGENT_PID:-}" ]] ; then
+    echo "Starting an ephemeral ssh-agent";
+    eval "$(ssh-agent -s)"
+  fi
+
+  echo "Loading ssh-key into ssh-agent (pid ${SSH_AGENT_PID:-})";
+  echo "$ssh_key" | env SSH_ASKPASS="/bin/false" ssh-add -
+}

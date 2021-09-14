@@ -22,10 +22,47 @@ main() {
         echo "AWS_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
         echo "CDK_DEFAULT_ACCOUNT:${AWS_ACCOUNT_ID}"
         echo "CDK_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
+        load_git_creds_from_sm
      else
         echo "Error in setting AWS_ACCOUNT_ID"
      fi
-    
+}
+
+load_git_creds_from_sm() {
+  # Adapted from https://github.com/buildkite/elastic-ci-stack-secrets-manager-hooks/blob/master/hooks/pre-command
+  # shellcheck disable=SC1090
+  . "${HOOKS_DIR}/../lib/shared"
+
+  debug() {
+    if [[ "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_DEBUG:-false}" =~ (true|on|1) ]] ; then
+      echo "$@"
+    fi
+  }
+
+  # When BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME is not set, default to buildkite/<buildkite-queue>/ssh-private-key
+  if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME:-}" ]] ; then
+    export BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME="buildkite/${BUILDKITE_AGENT_META_DATA_QUEUE}/ssh-private-key"
+    debug "Secret Name set as default value of buildkite/{buildkite-queue}/ssh-private-key: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}"
+  fi
+
+  echo "~~~ Loading secrets from AWS Secrets Manager";
+  debug "Retrieving secret ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME} in region ${AWS_DEFAULT_REGION}"
+
+  # First up we look for ssh keys if the repository is ssh
+  if [[ "${BUILDKITE_REPO:-}" =~ ^git ]] ; then
+    if ! ssh_key=$(sm_secret_get "$BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME") ; then
+      echo "+++ :warning: Failed to get secret ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_SECRET_NAME}" >&2;
+      exit 1
+    fi
+    # Add the ssh key to an ephemeral ssh agent so the key never touches disk
+    debug "Got ${#ssh_key} bytes of ssh key"
+    add_ssh_private_key_to_agent "$ssh_key"
+
+  # Otherwise check for git credentials for https, use the first one we find
+  elif [[ "${BUILDKITE_REPO:-}" =~ ^http ]] ; then
+    echo "+++ :warning: Authentication through Git Personal Access Token not implemented yet." >&2;
+    exit 1
+  fi
 }
 
 main
