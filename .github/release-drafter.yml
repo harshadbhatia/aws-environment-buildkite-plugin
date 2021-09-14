@@ -11,7 +11,8 @@ template: |
   ```diff
   steps:
     - plugins:
-  -     golang-cross-compile#$PREVIOUS_TAG:
-  +     golang-cross-compile#TODO:
-          build: main.go
+  -    harshadbhatia/aws-environment#v0.1.2:
+  +    harshadbhatia/aws-environment#v0.1.3:
+         debug: true # Default False
+         secret_name: mysecretname # Default "buildkite/{queue_name}/ssh-private-key"
   ```
