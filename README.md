@@ -11,7 +11,7 @@ This is still WIP Repo
 steps:
   # Run the included simple-command script that echos
     plugins:
-      - harshadbhatia/aws-environment#v0.1.2:
+      - harshadbhatia/aws-environment#v0.1.3:
           debug (optional- default false): true
           secret_name (optional- default "buildkite/{queue_name}/ssh-private-key"): mysecretname
 ```
@@ -52,7 +52,6 @@ MIT (see [LICENSE](LICENSE))
 
 ## TODO 
 
-- Finish SSM portion
 - Documentation
 - Tests
 
