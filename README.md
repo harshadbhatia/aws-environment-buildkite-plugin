@@ -12,8 +12,8 @@ steps:
   # Run the included simple-command script that echos
     plugins:
       - harshadbhatia/aws-environment#v0.1.3:
-          debug (optional- default false): true
-          secret_name (optional- default "buildkite/{queue_name}/ssh-private-key"): mysecretname
+          debug: true # Default False
+          secret_name: mysecretname # Default "buildkite/{queue_name}/ssh-private-key"
 ```
 
 
