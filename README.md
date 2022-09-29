@@ -2,8 +2,6 @@
 
 Buildkite Plugin for Setting AWS Defaults and Setting Git credentials on startup using Secrets Manager
 
-This is still WIP Repo
-
 
 ## Usage
 
@@ -14,6 +12,7 @@ steps:
       - harshadbhatia/aws-environment#v0.1.3:
           debug: true # Default False
           secret_name: mysecretname # Default "buildkite/{queue_name}/ssh-private-key"
+          artifact_bucket: bucketname # To store artifact in private bucket
 ```
 
 
@@ -50,7 +49,7 @@ aws secretsmanager create-secret \
 MIT (see [LICENSE](LICENSE))
 
 
-## TODO 
+## TODO
 
 - Documentation
 - Tests
