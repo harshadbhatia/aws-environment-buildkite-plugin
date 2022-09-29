@@ -9,6 +9,8 @@ configuration:
   properties:
     secret_name:
       type: string
+    artifact_bucket:
+      type: string
     debug:
       type: boolean
   additionalProperties: false

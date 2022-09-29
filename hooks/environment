@@ -23,6 +23,12 @@ main() {
         echo "CDK_DEFAULT_ACCOUNT:${AWS_ACCOUNT_ID}"
         echo "CDK_DEFAULT_REGION:${AWS_DEFAULT_REGION}"
         load_git_creds_from_sm
+        if [[ -z "${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_ARTIFACT_BUCKET:-}" ]] ; then
+          debug "Artifacts bucket not set, will use default"
+        else
+          debug "Using Artifact bucket: ${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_ARTIFACT_BUCKET}"
+          export BUILDKITE_ARTIFACT_UPLOAD_DESTINATION="s3://${BUILDKITE_PLUGIN_AWS_ENVIRONMENT_ARTIFACT_BUCKET}/${BUILDKITE_PIPELINE_ID}/${BUILDKITE_BUILD_ID}/${BUILDKITE_JOB_ID}"
+        fi
      else
         echo "Error in setting AWS_ACCOUNT_ID"
      fi
